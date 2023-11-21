@@ -11,6 +11,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"net/url"
 
 	"github.com/Qianlitp/crawlergo/pkg"
 	"github.com/Qianlitp/crawlergo/pkg/config"
@@ -30,10 +31,12 @@ import (
 */
 
 type Result struct {
-	ReqList       []Request `json:"req_list"`
-	AllReqList    []Request `json:"all_req_list"`
-	AllDomainList []string  `json:"all_domain_list"`
-	SubDomainList []string  `json:"sub_domain_list"`
+	// ReqList       []Request `json:"req_list"`
+	// AllReqList    []Request `json:"all_req_list"`
+	// AllDomainList []string  `json:"all_domain_list"`
+	// SubDomainList []string  `json:"sub_domain_list"`
+	RequestsFound map[string]Request `json:"requestsFound"`
+	InputSet      []string           `json:"inputSet"`
 }
 
 type Request struct {
@@ -298,36 +301,77 @@ func handleExit(t *pkg.CrawlerTask) {
 	os.Exit(-1)
 }
 
-func getJsonSerialize(result *pkg.Result) []byte {
-	var res Result
-	var reqList []Request
-	var allReqList []Request
-	for _, _req := range result.ReqList {
-		var req Request
-		req.Method = _req.Method
-		req.Url = _req.URL.String()
-		req.Source = _req.Source
-		req.Data = _req.PostData
-		req.Headers = _req.Headers
-		reqList = append(reqList, req)
-	}
-	for _, _req := range result.AllReqList {
-		var req Request
-		req.Method = _req.Method
-		req.Url = _req.URL.String()
-		req.Source = _req.Source
-		req.Data = _req.PostData
-		req.Headers = _req.Headers
-		allReqList = append(allReqList, req)
-	}
-	res.AllReqList = allReqList
-	res.ReqList = reqList
-	res.AllDomainList = result.AllDomainList
-	res.SubDomainList = result.SubDomainList
-
-	resBytes, err := json.Marshal(res)
+// URL에 index.php가 없으면 추가
+func addIndex(rawURL string) string {
+	parsedURL, err := url.Parse(rawURL)
 	if err != nil {
-		log.Fatal("Marshal result error")
+		return rawURL
 	}
-	return resBytes
+	path := parsedURL.Path
+	if !strings.HasSuffix(path, ".php") {
+		if !strings.HasSuffix(path, "/") {
+			path += "/index.php"
+		} else {
+			path += "index.php"
+		}
+	}
+	parsedURL.Path = path
+	return parsedURL.String()
+}
+
+func getJsonSerialize(result *pkg.Result) []byte {
+    requestsFound := make(map[string]Request)
+    inputSet := make([]string, 0)
+
+    for _, _req := range result.ReqList {
+        var req Request
+        var key string
+        req.Method = _req.Method
+        req.Url = addIndex(_req.URL.String())
+        req.Source = _req.Source
+        req.Data = _req.PostData
+        req.Headers = _req.Headers
+
+        // URL에서 쿼리 파싱
+        parsedURL, _ := url.Parse(req.Url)
+        queryMap, _ := url.ParseQuery(parsedURL.RawQuery)
+        for k, v := range queryMap {
+            inputSet = append(inputSet, fmt.Sprintf("%s=%s", k, v[0]))
+        }
+
+        // postData 파싱
+        if req.Data != "" {
+            dataPairs := strings.Split(req.Data, "&")
+            for _, pair := range dataPairs {
+                inputSet = append(inputSet, pair)
+            }
+        }
+
+        if req.Data == "" {
+            key = fmt.Sprintf("%s %s", req.Method, req.Url)
+        } else {
+            key = fmt.Sprintf("%s %s %s", req.Method, req.Url, req.Data)
+        }
+        requestsFound[key] = req
+    }
+
+    resultJSON := Result{
+        RequestsFound: requestsFound,
+        InputSet:      inputSet,
+    }
+
+    resBytes, err := json.MarshalIndent(resultJSON, "", "    ")
+    if err != nil {
+        log.Fatal("Marshal result error")
+    }
+
+    replacer := strings.NewReplacer(
+        "\\u0026", "&",
+        "\\u003c", "<",
+        "\\u003e", ">",
+		"\\\\", "\""
+    )
+    resultString := replacer.Replace(string(resBytes))
+
+    return []byte(resultString)
 }

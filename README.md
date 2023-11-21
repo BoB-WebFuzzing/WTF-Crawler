@@ -32,7 +32,7 @@ make build
 python3 crawlergo.py
 ```
 
-### Calling crawlergo with python
+## Calling crawlergo with python
 - target : 크롤링 대상 URL
 - headers : 커스텀 헤더 설정 (쿠키 설정)
 ```python3

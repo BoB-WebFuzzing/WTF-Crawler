@@ -18,6 +18,16 @@ git clone https://github.com/BoB-WebFuzzing/WTF-crawlergo.git
 cd WTF-crawlergo
 ```
 ### 2. Chromium 다운로드
+#### Ubntu Server (NO GUI)
+```shell
+wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
+sudo apt update -y
+sudo apt-get install google-chrome-stable -y
+which google-chrome # 이 명령어를 통해 출력된 경로를 -c 옵션 다음에 작성 (crawlergo.py 수정필요)
+```
+
+#### Ubuntu Desktop
 ref : https://www.chromium.org/getting-involved/download-chromium/
 ```shell
 npx @puppeteer/browsers install chrome@stable

@@ -369,7 +369,7 @@ func getJsonSerialize(result *pkg.Result) []byte {
         "\\u0026", "&",
         "\\u003c", "<",
         "\\u003e", ">",
-		"\\\\", "\""
+		"\\\\", "\"",
     )
     resultString := replacer.Replace(string(resBytes))
 

@@ -18,17 +18,20 @@ git clone https://github.com/BoB-WebFuzzing/WTF-crawlergo.git
 cd WTF-crawlergo
 ```
 ### 2. Chromium 다운로드
-아래 각자 환경에 맞는 옵션으로 설치 진행
-#### 옵션 1) Ubuntu Server (NO GUI)
+아래 명령어를 입력했을 때 크롬 버전이 정상적으로 출력되면 이 단계는 건너뛰어도 됨
+```shell
+google-chrome --version
+```
+크롬이 설치되어 있지 않을 경우 아래 각자 환경에 맞는 옵션으로 설치 진행
+#### 설치옵션 1) Ubuntu Server (NO GUI)
 ```shell
 wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
 sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
 sudo apt update -y
 sudo apt-get install google-chrome-stable -y
-which google-chrome # 이 명령어를 통해 출력된 경로를 -c 옵션 다음에 작성 (crawlergo.py 수정필요)
 ```
 
-#### 옵션 2) Ubuntu Desktop
+#### 설치옵션 2) Ubuntu Desktop
 ref : https://www.chromium.org/getting-involved/download-chromium/
 ```shell
 npx @puppeteer/browsers install chrome@stable
@@ -60,7 +63,7 @@ def main():
         "Cookie": "PHPSESSID=4f5c943a8fc68425a469e5184edabf9b; "
                   "security=low"
     }
-    cmd = ["bin/crawlergo", "-c", "chrome/linux-119.0.6045.105/chrome-linux64/chrome",
+    cmd = ["bin/crawlergo", "-c", "/usr/bin/google-chrome",
            "-o", "json", "--output-json", "request_data.json", "--custom-headers", simplejson.dumps(headers),
            target]
 

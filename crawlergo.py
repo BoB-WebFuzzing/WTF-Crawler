@@ -11,7 +11,7 @@ def main():
         "Cookie": "PHPSESSID=4f5c943a8fc68425a469e5184edabf9b; "
                   "security=low"
     }
-    cmd = ["bin/crawlergo", "-c", "chrome/linux-119.0.6045.105/chrome-linux64/chrome",
+    cmd = ["bin/crawlergo", "-c", "/usr/bin/google-chrome",
            "-o", "json", "--output-json", "request_data.json", "--custom-headers", simplejson.dumps(headers),
            target]
 

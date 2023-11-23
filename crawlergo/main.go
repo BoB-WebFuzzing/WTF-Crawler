@@ -301,24 +301,6 @@ func handleExit(t *pkg.CrawlerTask) {
 	os.Exit(-1)
 }
 
-// URL에 index.php가 없으면 추가
-func addIndex(rawURL string) string {
-	parsedURL, err := url.Parse(rawURL)
-	if err != nil {
-		return rawURL
-	}
-	path := parsedURL.Path
-	if !strings.HasSuffix(path, ".php") {
-		if !strings.HasSuffix(path, "/") {
-			path += "/index.php"
-		} else {
-			path += "index.php"
-		}
-	}
-	parsedURL.Path = path
-	return parsedURL.String()
-}
-
 func getJsonSerialize(result *pkg.Result) []byte {
     requestsFound := make(map[string]Request)
     inputSet := make([]string, 0)
@@ -327,7 +309,7 @@ func getJsonSerialize(result *pkg.Result) []byte {
         var req Request
         var key string
         req.Method = _req.Method
-        req.Url = addIndex(_req.URL.String())
+        req.Url = _req.URL.String()
         req.Source = _req.Source
         req.Data = _req.PostData
         req.Headers = _req.Headers

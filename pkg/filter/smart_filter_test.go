@@ -10,46 +10,83 @@ import (
 )
 
 var (
-	// queryUrls = []string{
-	// 	"http://test.nil.local.com/cctv/abcd?keyword=crawlergocrawlergo&end=1",
-	// 	"http://test.nil.local.com/cctv/abcd?keyword=crawlergocrawlergo&end=1",
-	// }
-
-	fragmentUrls = []string{
-		// 基准组
-		"http://testhtml5.vuwm.com/latest#/page/1",
-		"http://testhtml5.vuwm.com/latest#/page/search?keyword=Crawlergo&source=2&demo=1423&c=afa",
-		// 被标记成 {{long}}
-		"http://testhtml5.vuwm.com/latest#/page/search/fasdfsdafsdfsdfsdfasfsfasfafdsafssfasdfsd",
-
-		// 对照组
-		"http://testhtml5.vuwm.com/latest#/page/2",
-		// 不应该被标记成 {{long}}
-		"http://testhtml5.vuwm.com/latest#/page/search?keyword=CrawlergoCrawlergoCrawlergo&source=1&demo=1255&c=afa",
+	requstUrls = []string{
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=a&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=b&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=c&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=d&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=e&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=f&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=g&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=h&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=i&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=j&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=k&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=l&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=m&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=n&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=o&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=p&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=q&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=r&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=s&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=t&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=u&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=v&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=w&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=x&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=y&wr_id=6",
+		"https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=z&wr_id=6",
+		// "https://demo.sir.kr/gnuboard5/",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=free",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=qa",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=notice",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=gallery",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=job",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=market",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=humor",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=free&wr_id=1",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=free&wr_id=2",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=free&wr_id=3",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=free&wr_id=4",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=free&wr_id=5",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=free&wr_id=6",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=free&wr_id=7",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=free&wr_id=8",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=free&wr_id=9",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=free&wr_id=10",
+		// "https://demo.sir.kr/gnuboard5/bbs/search.php?sfl=wr_subject&sop=and&stx=test",
+		// "https://demo.sir.kr/gnuboard5/bbs/search.php?sfl=wr_content&sop=and&stx=test",
+		// "https://demo.sir.kr/gnuboard5/bbs/search.php?sfl=wr_subject||wr_content&sop=and&stx=test",
+		// "https://demo.sir.kr/gnuboard5/bbs/search.php?sfl=wr_subject||wr_content&sop=or&stx=test",
+		// "https://demo.sir.kr/gnuboard5/bbs/search.php?sfl=wr_subject||wr_content&sop=and&stx=%27%20or%20%271%27=%271",
+		// "https://demo.sir.kr/gnuboard5/bbs/search.php?sfl=wr_subject||wr_content&sop=and&stx=%27%20or%20%271%27=%271",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=free&wr_id=4456",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=free&wr_id=4457",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=free&wr_id=4458",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=notice&wr_id=1164",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=notice&wr_id=1165",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=notice&wr_id=1166",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=notice&wr_id=1167",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=gallery&wr_id=678",
+		// "https://demo.sir.kr/gnuboard5/bbs/board.php?bo_table=gallery&wr_id=679",
 	}
 
-	// completeUrls = []string{
-	// 	"https://test.local.com:1234/adfatd/123456/sx14xi?user=crawlergo&pwd=fa1424&end=1#/user/info",
-	// }
 	smart = NewSmartFilter(NewSimpleFilter(""), true)
 )
 
-func TestDoFilter_countFragment(t *testing.T) {
-	reqs := []model.Request{}
-	for _, fu := range fragmentUrls {
-		url, err := model.GetUrl(fu)
+func TestDoFilter(t *testing.T) {
+	targets := []model.Request{}
+	for _, url := range requstUrls {
+		url, err := model.GetUrl(url)
 		assert.Nil(t, err)
-		reqs = append(reqs, model.GetRequest(config.GET, url))
+		targets = append(targets, model.GetRequest(config.GET, url))
 	}
-	// #/page/1 和 #/page/2 是同一种类型
-	assert.Equal(t, smart.calcFragmentID(reqs[0].URL.Fragment), smart.calcFragmentID(reqs[3].URL.Fragment))
-	assert.Equal(t, smart.calcFragmentID(reqs[1].URL.Fragment), smart.calcFragmentID(reqs[4].URL.Fragment))
-	for _, rq := range reqs[:2] {
-		// 第一次出现都不应该过滤
-		assert.Equal(t, smart.DoFilter(&rq), false)
+
+	for _, target := range targets[:7] {
+		assert.Equal(t, smart.DoFilter(&target), false)
 	}
-	for _, rq := range reqs[3:] {
-		// 同类型出现第二次，应该被过滤
-		assert.Equal(t, smart.DoFilter(&rq), true)
-	}
+	assert.Equal(t, smart.DoFilter(&targets[8]), true)
+	assert.Equal(t, smart.DoFilter(&targets[9]), true)
+	assert.Equal(t, smart.DoFilter(&targets[10]), true)
 }

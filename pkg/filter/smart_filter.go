@@ -18,14 +18,14 @@ import (
 type SmartFilter struct {
 	StrictMode bool
 	*SimpleFilter
-	filterLocationSet          mapset.Set // 非逻辑型参数的位置记录 全局统一标记过滤
+	filterLocationSet          mapset.Set // 비논리적 파라미터에 대한 위치 로깅 글로벌 유니폼 플래그 필터링 <- 이게 무슨말이야...
 	filterParamKeyRepeatCount  sync.Map
-	filterParamKeySingleValues sync.Map // 所有参数名重复数量统计
-	filterPathParamKeySymbol   sync.Map // 某个path下的某个参数的值出现标记次数统计
+	filterParamKeySingleValues sync.Map // 모든 매개변수 이름의 중복 개수 통계
+	filterPathParamKeySymbol   sync.Map // path 아래의 매개변수 값에 태그가 지정된 횟수 계산
 	filterParamKeyAllValues    sync.Map
 	filterPathParamEmptyValues sync.Map
 	filterParentPathValues     sync.Map
-	uniqueMarkedIds            mapset.Set // 标记后的唯一ID，用于去重
+	uniqueMarkedIds            mapset.Set // 중복 제거를 위한 태그 지정 후 고유 ID
 }
 
 const (
@@ -94,10 +94,10 @@ func NewSmartFilter(base *SimpleFilter, strictMode bool) *SmartFilter {
 智能去重
 可选严格模式
 
-需要过滤则返回 true
+필터링이 필요한 경우 true를 반환하고 필터링이 필요하지 않은 경우 false를 반환합니다.
 */
 func (s *SmartFilter) DoFilter(req *model.Request) bool {
-	// 首先过滤掉静态资源、基础的去重、过滤其它的域名
+	// 정적 요소를 필터링
 	if s.SimpleFilter.DoFilter(req) {
 		logger.Logger.Debugf("filter req by simplefilter: " + req.URL.RequestURI())
 		return true
@@ -105,7 +105,7 @@ func (s *SmartFilter) DoFilter(req *model.Request) bool {
 
 	req.Filter.FragmentID = s.calcFragmentID(req.URL.Fragment)
 
-	// 标记
+	// 태깅
 	if req.Method == config.GET || req.Method == config.DELETE || req.Method == config.HEAD || req.Method == config.OPTIONS {
 		s.getMark(req)
 		s.repeatCountStatistic(req)
@@ -115,7 +115,7 @@ func (s *SmartFilter) DoFilter(req *model.Request) bool {
 		logger.Logger.Debug("dont support such method: " + req.Method)
 	}
 
-	// 对标记后的请求进行去重
+	// 태그가 지정된 요청의 중복 제거
 	uniqueId := req.Filter.UniqueId
 	if s.uniqueMarkedIds.Contains(uniqueId) {
 		logger.Logger.Debugf("filter req by uniqueMarkedIds 1: " + req.URL.RequestURI())
@@ -125,38 +125,38 @@ func (s *SmartFilter) DoFilter(req *model.Request) bool {
 	// 全局数值型参数标记
 	s.globalFilterLocationMark(req)
 
-	// 接下来对标记的GET请求进行去重
+	// 태그가 지정된 GET 요청의 중복 제거
 	if req.Method == config.GET || req.Method == config.DELETE || req.Method == config.HEAD || req.Method == config.OPTIONS {
-		// 对超过阈值的GET请求进行标记
+		// 임계값을 초과하는 GET 요청에 플래그 지정
 		s.overCountMark(req)
 
-		// 重新计算 QueryMapId
+		// QueryMapId 다시 계산
 		req.Filter.QueryMapId = getParamMapID(req.Filter.MarkedQueryMap)
-		// 重新计算 PathId
+		// PathId 다시 계산
 		req.Filter.PathId = getPathID(req.Filter.MarkedPath)
 	} else {
-		// 重新计算 PostDataId
+		// PostDataId 다시 계산
 		req.Filter.PostDataId = getParamMapID(req.Filter.MarkedPostDataMap)
 	}
 
-	// 重新计算请求唯一ID
+	// UniqueId 다시 계산
 	req.Filter.UniqueId = getMarkedUniqueID(req)
 
-	// 新的ID再次去重
+	// 새 ID를 부여해서 가중치 해제
 	newUniqueId := req.Filter.UniqueId
 	if s.uniqueMarkedIds.Contains(newUniqueId) {
 		logger.Logger.Debugf("filter req by uniqueMarkedIds 2: " + req.URL.RequestURI())
 		return true
 	}
 
-	// 添加到结果集中
+	// 결과 집합에 추가
 	s.uniqueMarkedIds.Add(newUniqueId)
 	return false
 }
 
 /*
 *
-Query的Map对象会自动解码，所以对RawQuery进行预先的标记
+Query의 Map개체는 URL이 자동으로 디코딩되므로 RawQuery에 미리 태그를 지정한다.
 */
 func (s *SmartFilter) preQueryMark(rawQuery string) string {
 	if chineseRegex.MatchString(rawQuery) {
@@ -171,20 +171,20 @@ func (s *SmartFilter) preQueryMark(rawQuery string) string {
 
 /*
 *
-对GET请求的参数和路径进行标记
+GET 요청의 파라미터와 경로에 태그를 지정합니다.
 */
 func (s *SmartFilter) getMark(req *model.Request) {
-	// 首先是解码前的预先替换
-	todoURL := *(req.URL)
+	// 쿼리 문자열 전처리
+	todoURL := *(req.URL) // 태그할 URL
 	todoURL.RawQuery = s.preQueryMark(todoURL.RawQuery)
 
-	// 依次打标记
+	// 순서대로 마킹
 	queryMap := todoURL.QueryMap()
 	queryMap = markParamName(queryMap)
 	queryMap = s.markParamValue(queryMap, *req)
 	markedPath := MarkPath(todoURL.Path)
 
-	// 计算唯一的ID
+	// 고유 ID 계산
 	var queryKeyID string
 	var queryMapID string
 	if len(queryMap) != 0 {
@@ -202,13 +202,13 @@ func (s *SmartFilter) getMark(req *model.Request) {
 	req.Filter.MarkedPath = markedPath
 	req.Filter.PathId = pathID
 
-	// 最后计算标记后的唯一请求ID
+	// 태그가 지정된 후 UniqueId 계산
 	req.Filter.UniqueId = getMarkedUniqueID(req)
 }
 
 /*
 *
-对POST请求的参数和路径进行标记
+POST 요청에 대한 파라미터 및 경로 태그 지정
 */
 func (s *SmartFilter) postMark(req *model.Request) {
 	postDataMap := req.PostDataMap()
@@ -217,7 +217,7 @@ func (s *SmartFilter) postMark(req *model.Request) {
 	postDataMap = s.markParamValue(postDataMap, *req)
 	markedPath := MarkPath(req.URL.Path)
 
-	// 计算唯一的ID
+	// 고유 ID 계산
 	var postDataMapID string
 	if len(postDataMap) != 0 {
 		postDataMapID = getParamMapID(postDataMap)
@@ -231,7 +231,7 @@ func (s *SmartFilter) postMark(req *model.Request) {
 	req.Filter.MarkedPath = markedPath
 	req.Filter.PathId = pathID
 
-	// 最后计算标记后的唯一请求ID
+	// 태그가 지정된 후 UniqueId 계산
 	req.Filter.UniqueId = getMarkedUniqueID(req)
 }
 
@@ -242,13 +242,10 @@ func (s *SmartFilter) postMark(req *model.Request) {
 func markParamName(paramMap map[string]interface{}) map[string]interface{} {
 	markedParamMap := map[string]interface{}{}
 	for key, value := range paramMap {
-		// 纯字母不处理
 		if onlyAlphaRegex.MatchString(key) {
 			markedParamMap[key] = value
-			// 参数名过长
 		} else if len(key) >= 32 {
 			markedParamMap[TooLongMark] = value
-			// 替换掉数字
 		} else {
 			key = replaceNumRegex.ReplaceAllString(key, NumberMark)
 			markedParamMap[key] = value
@@ -275,7 +272,7 @@ func (s *SmartFilter) markParamValue(paramMap map[string]interface{}, req model.
 			markedParamMap[key] = NumberMark
 			continue
 		}
-		// 只处理string类型
+		// 문자열 값 처리
 		valueStr, ok := value.(string)
 		if !ok {
 			continue
@@ -337,6 +334,8 @@ func (s *SmartFilter) markParamValue(paramMap map[string]interface{}, req model.
 				}
 				if count >= 3 {
 					markedParamMap[key] = MixStringMark
+				} else {
+					markedParamMap[key] = value
 				}
 			}
 		} else {
@@ -348,7 +347,7 @@ func (s *SmartFilter) markParamValue(paramMap map[string]interface{}, req model.
 
 /*
 *
-标记路径
+path 마킹
 */
 func MarkPath(path string) string {
 	pathParts := strings.Split(path, "/")
@@ -389,7 +388,7 @@ func MarkPath(path string) string {
 
 /*
 *
-全局数值型参数过滤
+전역 숫자 매개변수 필터링
 */
 func (s *SmartFilter) globalFilterLocationMark(req *model.Request) {
 	name := req.URL.Hostname() + req.URL.Path + req.Method
@@ -412,14 +411,14 @@ func (s *SmartFilter) globalFilterLocationMark(req *model.Request) {
 
 /*
 *
-进行全局重复参数名、参数值、路径的统计标记
-之后对超过阈值的部分再次打标记
+전역 중복 파라미터 이름, 값, path에 대한 통계적 태깅 수행
+그 후 임계값을 초과하는 부분에 대해 다시 태그를 지정합니다.
 */
 func (s *SmartFilter) repeatCountStatistic(req *model.Request) {
 	queryKeyId := req.Filter.QueryKeysId
 	pathId := req.Filter.PathId
 	if queryKeyId != "" {
-		// 所有参数名重复数量统计
+		// 모든 파라미터 이름의 중복 개수 통계
 		if v, ok := s.filterParamKeyRepeatCount.Load(queryKeyId); ok {
 			s.filterParamKeyRepeatCount.Store(queryKeyId, v.(int)+1)
 		} else {
@@ -427,7 +426,7 @@ func (s *SmartFilter) repeatCountStatistic(req *model.Request) {
 		}
 
 		for key, value := range req.Filter.MarkedQueryMap {
-			// 某个URL的所有参数名重复数量统计
+			// URL의 모든 파라미터 이름 중복 개수 통계
 			paramQueryKey := queryKeyId + key
 
 			if set, ok := s.filterParamKeySingleValues.Load(paramQueryKey); ok {
@@ -437,7 +436,7 @@ func (s *SmartFilter) repeatCountStatistic(req *model.Request) {
 				s.filterParamKeySingleValues.Store(paramQueryKey, mapset.NewSet(value))
 			}
 
-			//本轮所有URL中某个参数重复数量统计
+			// 이번 라운드의 모든 URL에서 중복된 파라미터 수에 대한 통계
 			if _, ok := s.filterParamKeyAllValues.Load(key); !ok {
 				s.filterParamKeyAllValues.Store(key, mapset.NewSet(value))
 			} else {
@@ -449,7 +448,7 @@ func (s *SmartFilter) repeatCountStatistic(req *model.Request) {
 				}
 			}
 
-			// 如果参数值为空，统计该PATH下的空值参数名个数
+			// 파라미터 값이 없을 경우 path 아래에서 파라미터 값이 없는 파라미터 수에 대한 통계
 			if value == "" {
 				if _, ok := s.filterPathParamEmptyValues.Load(pathId); !ok {
 					s.filterPathParamEmptyValues.Store(pathId, mapset.NewSet(key))
@@ -464,7 +463,7 @@ func (s *SmartFilter) repeatCountStatistic(req *model.Request) {
 			}
 
 			pathIdKey := pathId + key
-			// 某path下的参数值去重标记出现次数统计
+			// 특정 path에서 파라미터 값에 대한 중복 제거 표시 수에 대한 통계
 			if v, ok := s.filterPathParamKeySymbol.Load(pathIdKey); ok {
 				if markedStringRegex.MatchString(value.(string)) {
 					s.filterPathParamKeySymbol.Store(pathIdKey, v.(int)+1)
@@ -472,11 +471,11 @@ func (s *SmartFilter) repeatCountStatistic(req *model.Request) {
 			} else {
 				s.filterPathParamKeySymbol.Store(pathIdKey, 1)
 			}
-
 		}
 	}
 
 	// 相对于上一级目录，本级path目录的数量统计，存在文件后缀的情况下，放行常见脚本后缀
+	// 현재 경로가 루트에 있거나 상위 경로가 없거나, 현재 경로가 일반적인 스크립트 파일("php", "asp", "jsp", "asa")을 가리키는 경우
 	if req.URL.ParentPath() == "" || inCommonScriptSuffix(req.URL.FileExt()) {
 		return
 	}
@@ -498,14 +497,14 @@ func (s *SmartFilter) repeatCountStatistic(req *model.Request) {
 
 /*
 *
-对重复统计之后，超过阈值的部分再次打标记
+카운트를 반복한 후, 임계값을 초과하는 부분을 다시 표시
 */
 func (s *SmartFilter) overCountMark(req *model.Request) {
 	queryKeyId := req.Filter.QueryKeysId
 	pathId := req.Filter.PathId
 	// 参数不为空，
 	if req.Filter.QueryKeysId != "" {
-		// 某个URL的所有参数名重复数量超过阈值 且该参数有超过三个不同的值 则打标记
+		// 특정 URL의 매개변수 이름(key)이 중복되는 횟수가 임계값을 초과하면 {{fix_param}}으로 태깅
 		if v, ok := s.filterParamKeyRepeatCount.Load(queryKeyId); ok && v.(int) > MaxParamKeySingleCount {
 			for key := range req.Filter.MarkedQueryMap {
 				paramQueryKey := queryKeyId + key
@@ -568,7 +567,7 @@ func (s *SmartFilter) overCountMark(req *model.Request) {
 	}
 }
 
-// calcFragmentID 计算 fragment 唯一值，如果 fragment 的格式为 url path
+// fragment가 URL path 형식인 경우 fragment 고유 값을 계산
 func (s *SmartFilter) calcFragmentID(fragment string) string {
 	if fragment == "" || !strings.HasPrefix(fragment, "/") {
 		return ""
@@ -627,7 +626,7 @@ func getKeysID(dataMap map[string]interface{}) string {
 
 /*
 *
-计算请求参数标记后的唯一ID
+태그 지정 후 파라미터 값의 고유 ID 계산
 */
 func getParamMapID(dataMap map[string]interface{}) string {
 	var keys []string

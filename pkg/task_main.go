@@ -16,27 +16,26 @@ import (
 )
 
 type CrawlerTask struct {
-
-	Browser       *engine2.Browser     //
-	RootDomain    string               // 当前爬取根域名 用于子域名收集
-	Targets       []*model.Request     // 输入目标
-	Result        *Result              // 最终结果
-	Config        *TaskConfig          // 配置信息
-	filter        filter.FilterHandler // 过滤对象
-	Pool          *ants.Pool           // 协程池
-	taskWG        sync.WaitGroup       // 等待协程池所有任务结束
-	crawledCount  int                  // 爬取过的数量
-	taskCountLock sync.Mutex           // 已爬取的任务总数锁
-  Start         time.Time           //开始时间
+	Browser       *engine2.Browser
+	RootDomain    string               // 하위 도메인 수집을 위한 현재 크롤링 루트 도메인
+	Targets       []*model.Request     // 크롤링 대상
+	Result        *Result              // 크롤링 결과
+	Config        *TaskConfig          // 설정 정보
+	filter        filter.FilterHandler // 필터 개체
+	Pool          *ants.Pool           // 크롤링 작업 풀 (고루틴 풀 동시성 제어)
+	taskWG        sync.WaitGroup       // 협업 풀의 모든 작업이 완료될 때까지 대기
+	crawledCount  int                  // 크롤링 작업 수
+	taskCountLock sync.Mutex           // 총 작업 수를 제어하는 데 사용되는 뮤텍스
+	Start         time.Time            // 크롤링 시작 시간
 
 }
 
 type Result struct {
-	ReqList       []*model.Request // 返回的同域名结果
-	AllReqList    []*model.Request // 所有域名的请求
-	AllDomainList []string         // 所有域名列表
-	SubDomainList []string         // 子域名列表
-	resultLock    sync.Mutex       // 合并结果时加锁
+	ReqList       []*model.Request // 동일한 도메인에 대한 Request
+	AllReqList    []*model.Request // 모든 도메인에 대한 Request
+	AllDomainList []string         // 모든 도메인 목록
+	SubDomainList []string         // 하위 도메인 목록
+	resultLock    sync.Mutex       // 결과를 제어하는 데 사용되는 뮤텍스
 }
 
 type tabTask struct {
@@ -45,10 +44,7 @@ type tabTask struct {
 	req         *model.Request
 }
 
-/*
-*
-新建爬虫任务
-*/
+// 새로운 크롤러 작업 생성
 func NewCrawlerTask(targets []*model.Request, taskConf TaskConfig) (*CrawlerTask, error) {
 	crawlerTask := CrawlerTask{
 		Result: &Result{},
@@ -85,8 +81,8 @@ func NewCrawlerTask(targets []*model.Request, taskConf TaskConfig) (*CrawlerTask
 		req.Source = config.FromTarget
 	}
 
-	// 业务代码与数据代码分离, 初始化一些默认配置
-	// 使用 funtion option 和一个代理来初始化 taskConf 的配置
+	// 비즈니스 코드와 데이터 코드를 분리하고 일부 기본 구성을 초기화합니다.
+	// function option과 프록시를 사용하여 taskConf 구성을 초기화합니다.
 	for _, fn := range []TaskConfigOptFunc{
 		WithTabRunTimeout(config.TabRunTimeout),
 		WithMaxTabsCount(config.MaxTabsCount),
@@ -100,6 +96,7 @@ func NewCrawlerTask(targets []*model.Request, taskConf TaskConfig) (*CrawlerTask
 		fn(&taskConf)
 	}
 
+	// 사용자 정의 헤더가 Unmarshal 되는지 확인
 	if taskConf.ExtraHeadersString != "" {
 		err := json.Unmarshal([]byte(taskConf.ExtraHeadersString), &taskConf.ExtraHeaders)
 		if err != nil {
@@ -115,7 +112,7 @@ func NewCrawlerTask(targets []*model.Request, taskConf TaskConfig) (*CrawlerTask
 	}
 	crawlerTask.RootDomain = targets[0].URL.RootDomain()
 
-	// 创建协程池
+	// 동시 풀 생성
 	p, _ := ants.NewPool(taskConf.MaxTabsCount)
 	crawlerTask.Pool = p
 
@@ -124,7 +121,7 @@ func NewCrawlerTask(targets []*model.Request, taskConf TaskConfig) (*CrawlerTask
 
 /*
 *
-根据请求列表生成tabTask协程任务列表
+요청 목록을 기반으로 tabTask 공동 프로그래밍 작업 목록 생성
 */
 func (t *CrawlerTask) generateTabTask(req *model.Request) *tabTask {
 	task := tabTask{
@@ -135,13 +132,10 @@ func (t *CrawlerTask) generateTabTask(req *model.Request) *tabTask {
 	return &task
 }
 
-/*
-*
-开始当前任务
-*/
+// 크롤링 현재 작업 시작
 func (t *CrawlerTask) Run() {
-	defer t.Pool.Release()  // 释放协程池
-	defer t.Browser.Close() // 关闭浏览器
+	defer t.Pool.Release()  // 동시 풀 해제
+	defer t.Browser.Close() // 브라우저 종료
 
 	t.Start = time.Now()
 	if t.Config.PathFromRobots {
@@ -203,8 +197,8 @@ func (t *CrawlerTask) Run() {
 
 /*
 *
-添加任务到协程池
-添加之前实时过滤
+동시 풀에 작업 추가
+추가 전 실시간 필터링
 */
 func (t *CrawlerTask) addTask2Pool(req *model.Request) {
 	t.taskCountLock.Lock()

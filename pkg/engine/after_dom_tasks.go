@@ -13,7 +13,8 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-/**
+/*
+*
 在DOMContentLoaded完成后执行
 */
 func (tab *Tab) AfterDOMRun() {
@@ -36,7 +37,8 @@ func (tab *Tab) AfterDOMRun() {
 	go tab.AfterLoadedRun()
 }
 
-/**
+/*
+*
 获取的Body的NodeId 用于之后子节点无等待查询
 最多等待3秒 如果DOM依旧没有渲染完成，则退出
 */
@@ -59,7 +61,8 @@ func (tab *Tab) getBodyNodeId() bool {
 	return true
 }
 
-/**
+/*
+*
 自动化填充表单
 */
 func (tab *Tab) fillForm() {
@@ -78,7 +81,8 @@ func (tab *Tab) fillForm() {
 	logger.Logger.Debug("fillForm end")
 }
 
-/**
+/*
+*
 设置Dom节点变化的观察函数
 */
 func (tab *Tab) setObserverJS() {
@@ -93,7 +97,8 @@ type FillForm struct {
 	tab *Tab
 }
 
-/**
+/*
+*
 填充所有 input 标签
 */
 func (f *FillForm) fillInput() {

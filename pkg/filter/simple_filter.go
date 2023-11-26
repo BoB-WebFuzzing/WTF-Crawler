@@ -26,21 +26,21 @@ func NewSimpleFilter(host string) *SimpleFilter {
 
 /*
 *
-需要过滤则返回 true
+필터링이 필요한 경우 true를 반환하고 필터링이 필요하지 않은 경우 false를 반환합니다.
 */
 func (s *SimpleFilter) DoFilter(req *model.Request) bool {
 	if s.UniqueSet == nil {
 		s.UniqueSet = mapset.NewSet()
 	}
-	// 首先判断是否需要过滤域名
+	// 먼저 도메인명을 필터링할지 여부를 결정
 	if s.HostLimit != "" && s.DomainFilter(req) {
 		return true
 	}
-	// 去重
+	// UniqueId를 바탕으로 중복 제거
 	if s.UniqueFilter(req) {
 		return true
 	}
-	// 过滤静态资源
+	// 정적 리소스 필터링
 	if s.StaticFilter(req) {
 		return true
 	}
@@ -49,7 +49,7 @@ func (s *SimpleFilter) DoFilter(req *model.Request) bool {
 
 /*
 *
-请求去重
+중복 제거 요청
 */
 func (s *SimpleFilter) UniqueFilter(req *model.Request) bool {
 	if s.UniqueSet == nil {
@@ -65,13 +65,13 @@ func (s *SimpleFilter) UniqueFilter(req *model.Request) bool {
 
 /*
 *
-静态资源过滤
+정적 리소스 필터링
 */
 func (s *SimpleFilter) StaticFilter(req *model.Request) bool {
 	if s.UniqueSet == nil {
 		s.UniqueSet = mapset.NewSet()
 	}
-	// 首先将slice转换成map
+	// Slice를 Map으로 변환
 
 	if req.URL.FileExt() == "" {
 		return false
@@ -84,7 +84,7 @@ func (s *SimpleFilter) StaticFilter(req *model.Request) bool {
 
 /*
 *
-只保留指定域名的链接
+지정된 도메인으로 연결되는 URL만 유지
 */
 func (s *SimpleFilter) DomainFilter(req *model.Request) bool {
 	if s.UniqueSet == nil {

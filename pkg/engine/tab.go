@@ -87,14 +87,14 @@ func NewTab(browser *Browser, navigateReq model2.Request, config TabConfig) *Tab
 	// 设置请求拦截监听
 	chromedp.ListenTarget(*tab.Ctx, func(v interface{}) {
 		switch v := v.(type) {
-		// 根据不同的事件 选择执行对应的动作
+		// 네트워크 요청이 발송되기 직전에 트리거 됨
 		case *network.EventRequestWillBeSent:
 			if string(v.RequestID) == string(v.LoaderID) && v.Type == "Document" && tab.TopFrameId == "" {
 				tab.LoaderID = string(v.LoaderID)
 				tab.TopFrameId = string(v.FrameID)
 			}
 
-		// 请求发出时暂停 即 请求拦截
+		// 요청이 일시 중지될 때 트리거 됨
 		case *fetch.EventRequestPaused:
 			tab.WG.Add(1)
 			go tab.InterceptRequest(v)
@@ -102,6 +102,7 @@ func NewTab(browser *Browser, navigateReq model2.Request, config TabConfig) *Tab
 		// 解析所有JS文件中的URL并添加到结果中
 		// 解析HTML文档中的URL
 		// 查找当前页面的编码
+		// 응답(response)이 수신될 때 트리거 됨
 		case *network.EventResponseReceived:
 			if v.Response.MimeType == "application/javascript" || v.Response.MimeType == "text/html" || v.Response.MimeType == "application/json" {
 				tab.WG.Add(1)
@@ -111,7 +112,7 @@ func NewTab(browser *Browser, navigateReq model2.Request, config TabConfig) *Tab
 				tab.WG.Add(1)
 				go tab.GetContentCharset(v)
 			}
-		// 处理后端重定向 3XX
+		// 상태코드 3xx의 HTTP redirection을 처리하는데 사용
 		case *network.EventResponseReceivedExtraInfo:
 			if v.RequestID.String() == tab.NavNetworkID {
 				tab.WG.Add(1)
@@ -120,13 +121,14 @@ func NewTab(browser *Browser, navigateReq model2.Request, config TabConfig) *Tab
 		//case *network.EventLoadingFailed:
 		//	logger.Logger.Error("EventLoadingFailed ", v.ErrorText)
 		// 401 407 要求认证 此时会阻塞当前页面 需要处理解决
+		// 상태코드가 401, 407일 때, 즉 인증이 필요한 경우 트리거 됨
 		case *fetch.EventAuthRequired:
 			tab.WG.Add(1)
 			go tab.HandleAuthRequired(v)
 
 		// DOMContentLoaded
-		// 开始执行表单填充 和 执行DOM节点观察函数
-		// 只执行一次
+		// form 채우기 및 dom 노드 감시 시작
+		// 한 번만 실행
 		case *page.EventDomContentEventFired:
 			if DOMContentLoadedRun {
 				return
@@ -236,7 +238,8 @@ func RunWithTimeOut(ctx *context.Context, timeout time.Duration, tasks chromedp.
 	}
 }
 
-/**
+/*
+*
 添加收集到的URL到结果列表，需要处理Host绑定
 */
 func (tab *Tab) AddResultUrl(method string, _url string, source string) {
@@ -277,7 +280,8 @@ func (tab *Tab) AddResultUrl(method string, _url string, source string) {
 	tab.lock.Unlock()
 }
 
-/**
+/*
+*
 添加请求到结果列表，拦截请求时处理了Host绑定，此处无需处理
 */
 func (tab *Tab) AddResultRequest(req model2.Request) {
@@ -289,7 +293,8 @@ func (tab *Tab) AddResultRequest(req model2.Request) {
 	tab.lock.Unlock()
 }
 
-/**
+/*
+*
 获取当前标签页CDP的执行上下文
 */
 func (tab *Tab) GetExecutor() context.Context {
@@ -298,7 +303,8 @@ func (tab *Tab) GetExecutor() context.Context {
 	return ctx
 }
 
-/**
+/*
+*
 关闭弹窗
 */
 func (tab *Tab) dismissDialog() {
@@ -307,7 +313,8 @@ func (tab *Tab) dismissDialog() {
 	_ = page.HandleJavaScriptDialog(false).Do(ctx)
 }
 
-/**
+/*
+*
 处理回调
 */
 func (tab *Tab) HandleBindingCalled(event *runtime.EventBindingCalled) {
@@ -324,7 +331,8 @@ func (tab *Tab) HandleBindingCalled(event *runtime.EventBindingCalled) {
 	tab.Evaluate(fmt.Sprintf(js.DeliverResultJS, bcPayload.Name, bcPayload.Seq, "s"))
 }
 
-/**
+/*
+*
 执行JS
 */
 func (tab *Tab) Evaluate(expression string) {
@@ -340,7 +348,8 @@ func (tab *Tab) Evaluate(expression string) {
 	}
 }
 
-/**
+/*
+*
 立即根据条件获取Nodes的ID，不等待
 */
 func (tab *Tab) GetNodeIDs(sel string) ([]cdp.NodeID, error) {
@@ -348,7 +357,8 @@ func (tab *Tab) GetNodeIDs(sel string) ([]cdp.NodeID, error) {
 	return dom.QuerySelectorAll(tab.DocBodyNodeId, sel).Do(ctx)
 }
 
-/**
+/*
+*
 根据给的Node执行JS
 */
 func (tab *Tab) EvaluateWithNode(expression string, node *cdp.Node) error {
@@ -361,7 +371,8 @@ func (tab *Tab) EvaluateWithNode(expression string, node *cdp.Node) error {
 	return nil
 }
 
-/**
+/*
+*
 识别页面的编码
 */
 func (tab *Tab) DetectCharset() {

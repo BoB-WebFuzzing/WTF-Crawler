@@ -5,13 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
-	"net/url"
 
 	"github.com/Qianlitp/crawlergo/pkg"
 	"github.com/Qianlitp/crawlergo/pkg/config"
@@ -89,8 +89,8 @@ func main() {
 		UsageText: "crawlergo [global options] url1 url2 url3 ... (must be same host)",
 		Version:   Version,
 		Authors:   []*cli.Author{&author},
-		Flags:     cliFlags,
-		Action:    run,
+		Flags:     cliFlags, // 프로그램 실행 시 사용할 수 있는 옵션 정의
+		Action:    run,      // 프로그램이 실행될 때 호출되는 함수
 	}
 
 	err := app.Run(os.Args)
@@ -102,12 +102,12 @@ func main() {
 func run(c *cli.Context) error {
 	signalChan = make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
-	if c.Args().Len() == 0 {
+	if c.Args().Len() == 0 { // 인자로 url이 주어졌는지 검사
 		logger.Logger.Error("url must be set")
 		return errors.New("url must be set")
 	}
 
-	// 设置日志输出级别
+	// 로그 출력 레벨 설정
 	level, err := logrus.ParseLevel(logLevel)
 	if err != nil {
 		logger.Logger.Fatal(err)
@@ -115,6 +115,8 @@ func run(c *cli.Context) error {
 	logger.Logger.SetLevel(level)
 
 	var targets []*model2.Request
+
+	// 인자로 입력받은 URL에 대해 Request 객체 생성
 	for _, _url := range c.Args().Slice() {
 		var req model2.Request
 		url, err := model2.GetUrl(_url)
@@ -139,7 +141,7 @@ func run(c *cli.Context) error {
 		logger.Logger.Fatal("no validate target.")
 	}
 
-	// 检查自定义的表单参数配置
+	// 사용자 정의 양식 매개변수 처리
 	taskConfig.CustomFormValues, err = parseCustomFormValues(customFormTypeValues.Value())
 	if err != nil {
 		logger.Logger.Fatal(err)
@@ -149,7 +151,7 @@ func run(c *cli.Context) error {
 		logger.Logger.Fatal(err)
 	}
 
-	// 开始爬虫任务
+	// 크롤러 작업 시작
 	task, err := pkg.NewCrawlerTask(targets, taskConfig)
 	if err != nil {
 		logger.Logger.Error("create crawler task failed.")
@@ -161,11 +163,11 @@ func run(c *cli.Context) error {
 		logger.Logger.Info("filter mode: ", taskConfig.FilterMode)
 	}
 
-	// 提示自定义表单填充参数
+	// 사용자 지정 양식
 	if len(taskConfig.CustomFormValues) > 0 {
 		logger.Logger.Info("Custom form values, " + tools.MapStringFormat(taskConfig.CustomFormValues))
 	}
-	// 提示自定义表单填充参数
+	// 사용자 지정 양식 채우기
 	if len(taskConfig.CustomFormKeywordValues) > 0 {
 		logger.Logger.Info("Custom form keyword values, " + tools.MapStringFormat(taskConfig.CustomFormKeywordValues))
 	}
@@ -320,58 +322,59 @@ func addIndex(rawURL string) string {
 }
 
 func getJsonSerialize(result *pkg.Result) []byte {
-    requestsFound := make(map[string]Request)
-    inputSet := make([]string, 0)
+	requestsFound := make(map[string]Request)
+	inputSet := make([]string, 0)
 
-    for _, _req := range result.ReqList {
-        var req Request
-        var key string
-        req.Method = _req.Method
-        req.Url = addIndex(_req.URL.String())
-        req.Source = _req.Source
-        req.Data = _req.PostData
-        req.Headers = _req.Headers
+	for _, _req := range result.ReqList {
 
-        // URL에서 쿼리 파싱
-        parsedURL, _ := url.Parse(req.Url)
-        queryMap, _ := url.ParseQuery(parsedURL.RawQuery)
-        for k, v := range queryMap {
-            inputSet = append(inputSet, fmt.Sprintf("%s=%s", k, v[0]))
-        }
+		var req Request
+		var key string
+		req.Method = _req.Method
+		req.Url = addIndex(_req.URL.String())
+		req.Source = _req.Source
+		req.Data = _req.PostData
+		req.Headers = _req.Headers
 
-        // postData 파싱
-        if req.Data != "" {
-            dataPairs := strings.Split(req.Data, "&")
-            for _, pair := range dataPairs {
-                inputSet = append(inputSet, pair)
-            }
-        }
+		// URL에서 쿼리 파싱
+		parsedURL, _ := url.Parse(req.Url)
+		queryMap, _ := url.ParseQuery(parsedURL.RawQuery)
+		for k, v := range queryMap {
+			inputSet = append(inputSet, fmt.Sprintf("%s=%s", k, v[0]))
+		}
 
-        if req.Data == "" {
-            key = fmt.Sprintf("%s %s", req.Method, req.Url)
-        } else {
-            key = fmt.Sprintf("%s %s %s", req.Method, req.Url, req.Data)
-        }
-        requestsFound[key] = req
-    }
+		// postData 파싱
+		if req.Data != "" {
+			dataPairs := strings.Split(req.Data, "&")
+			for _, pair := range dataPairs {
+				inputSet = append(inputSet, pair)
+			}
+		}
 
-    resultJSON := Result{
-        RequestsFound: requestsFound,
-        InputSet:      inputSet,
-    }
+		if req.Data == "" {
+			key = fmt.Sprintf("%s %s", req.Method, req.Url)
+		} else {
+			key = fmt.Sprintf("%s %s %s", req.Method, req.Url, req.Data)
+		}
+		requestsFound[key] = req
+	}
 
-    resBytes, err := json.MarshalIndent(resultJSON, "", "    ")
-    if err != nil {
-        log.Fatal("Marshal result error")
-    }
+	resultJSON := Result{
+		RequestsFound: requestsFound,
+		InputSet:      inputSet,
+	}
 
-    replacer := strings.NewReplacer(
-        "\\u0026", "&",
-        "\\u003c", "<",
-        "\\u003e", ">",
+	resBytes, err := json.MarshalIndent(resultJSON, "", "    ")
+	if err != nil {
+		log.Fatal("Marshal result error")
+	}
+
+	replacer := strings.NewReplacer(
+		"\\u0026", "&",
+		"\\u003c", "<",
+		"\\u003e", ">",
 		"\\\\", "\"",
-    )
-    resultString := replacer.Replace(string(resBytes))
+	)
+	resultString := replacer.Replace(string(resBytes))
 
-    return []byte(resultString)
+	return []byte(resultString)
 }

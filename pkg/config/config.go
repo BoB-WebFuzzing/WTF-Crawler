@@ -10,8 +10,8 @@ const (
 	DefaultUA               = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.0 Safari/537.36"
 	MaxTabsCount            = 10
 	TabRunTimeout           = 20 * time.Second
-	DefaultInputText        = "Crawlergo"
-	FormInputKeyword        = "Crawlergo"
+	DefaultInputText        = "Crawlergo" // 기본 텍스트 입력
+	FormInputKeyword        = "Crawlergo" // 사용하지 않는 것 같음
 	SuspectURLRegex         = `(?:"|')(((?:[a-zA-Z]{1,10}://|//)[^"'/]{1,}\.[a-zA-Z]{2,}[^"']{0,})|((?:/|\.\./|\./)[^"'><,;|*()(%%$^/\\\[\]][^"'><,;|()]{1,})|([a-zA-Z0-9_\-/]{1,}/[a-zA-Z0-9_\-/]{1,}\.(?:[a-zA-Z]{1,4}|action)(?:[\?|#][^"|']{0,}|))|([a-zA-Z0-9_\-/]{1,}/[a-zA-Z0-9_\-/]{3,}(?:[\?|#][^"|']{0,}|))|([a-zA-Z0-9_\-]{1,}\.(?:php|asp|aspx|jsp|json|action|html|js|txt|xml)(?:[\?|#][^"|']{0,}|)))(?:"|')`
 	URLRegex                = `((https?|ftp|file):)?//[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]`
 	AttrURLRegex            = ``
@@ -23,7 +23,7 @@ const (
 	MaxRunTime              = 60 * 60
 )
 
-// 请求方法
+// 요청 방법
 const (
 	GET     = "GET"
 	POST    = "POST"
@@ -33,29 +33,29 @@ const (
 	OPTIONS = "OPTIONS"
 )
 
-// 过滤模式
+// 필터링 모드
 const (
 	SimpleFilterMode = "simple"
 	SmartFilterMode  = "smart"
 	StrictFilterMode = "strict"
 )
 
-// 事件触发模式
+// 이벤트 트리거 모드
 const (
 	EventTriggerAsync = "async"
 	EventTriggerSync  = "sync"
 )
 
-// 请求的来源
+// 요청의 출처
 const (
-	FromTarget      = "Target"     //初始输入的目标
-	FromNavigation  = "Navigation" //页面导航请求
-	FromXHR         = "XHR"        //ajax异步请求
-	FromDOM         = "DOM"        //dom解析出来的请求
-	FromJSFile      = "JavaScript" //JS脚本中解析
-	FromFuzz        = "PathFuzz"   //初始path fuzz
-	FromRobots      = "robots.txt" //robots.txt
-	FromComment     = "Comment"    //页面中的注释
+	FromTarget      = "Target"     // 초기 입력 대상
+	FromNavigation  = "Navigation" // 페이지 탐색 요청
+	FromXHR         = "XHR"        // ajax 비동기 요청
+	FromDOM         = "DOM"        // dom에 의해 파싱된 요청
+	FromJSFile      = "JavaScript" // JS 스크립트에서 구문 분석
+	FromFuzz        = "PathFuzz"   // 디렉토리 dictionary를 사용하여 경로를 찾음
+	FromRobots      = "robots.txt" // robots.txt
+	FromComment     = "Comment"    // HTML 주석
 	FromWebSocket   = "WebSocket"
 	FromEventSource = "EventSource"
 	FromFetch       = "Fetch"
@@ -73,6 +73,7 @@ const (
 	MULTIPART  = "multipart/form-data"
 )
 
+// 정적 파일 접미사, 이러한 접미사가 있는 모든 요청은 무시됩니다.
 var (
 	StaticSuffix = []string{
 		"png", "gif", "jpg", "mp4", "mp3", "mng", "pct", "bmp", "jpeg", "pst", "psp", "ttf",

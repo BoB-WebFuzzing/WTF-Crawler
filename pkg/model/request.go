@@ -41,7 +41,8 @@ type Request struct {
 
 var supportContentType = []string{config.JSON, config.URLENCODED}
 
-/**
+/*
+*
 获取Request对象
 可选设置headers和postData
 */
@@ -65,7 +66,8 @@ func GetRequest(method string, URL *URL, options ...Options) Request {
 	return req
 }
 
-/**
+/*
+*
 完整格式化输出
 */
 func (req *Request) FormatPrint() {
@@ -81,7 +83,8 @@ func (req *Request) FormatPrint() {
 	fmt.Println(tempStr)
 }
 
-/**
+/*
+*
 简要输出
 */
 func (req *Request) SimplePrint() {
@@ -102,7 +105,8 @@ func (req *Request) SimpleFormat() string {
 	return tempStr
 }
 
-/**
+/*
+*
 不加入Header的请求ID
 */
 func (req *Request) NoHeaderId() string {
@@ -111,18 +115,19 @@ func (req *Request) NoHeaderId() string {
 
 func (req *Request) UniqueId() string {
 	if req.RedirectionFlag {
-		return tools.StrMd5(req.NoHeaderId() + "Redirection")
+		return tools.StrMd5(req.NoHeaderId() + "Redirection") //
 	} else {
-		return req.NoHeaderId()
+		return req.NoHeaderId() // MD5(메소드 + URL + POST 데이터)
 	}
 }
 
-/**
-返回POST请求数据解析后的map结构
+/*
+*
+구문 분석된 POST 요청 데이터의 맵 구조를 반환합니다.
 
-支持 application/x-www-form-urlencoded 、application/json
+application/x-www-form-urlencoded 、application/json 형식의 데이터를 지원합니다.
 
-如果解析失败，则返回 key: postDataStr 的map结构
+구문 분석에 실패하면 원래의 문자열을 반환합니다.
 */
 func (req *Request) PostDataMap() map[string]interface{} {
 	contentType, err := req.getContentType()
@@ -166,14 +171,16 @@ func (req *Request) PostDataMap() map[string]interface{} {
 	}
 }
 
-/**
+/*
+*
 返回GET请求参数解析后的map结构
 */
 func (req *Request) QueryMap() map[string][]string {
 	return req.URL.Query()
 }
 
-/**
+/*
+*
 获取content-type
 */
 func (req *Request) getContentType() (string, error) {

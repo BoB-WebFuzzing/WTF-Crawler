@@ -3,30 +3,30 @@ package pkg
 import "time"
 
 type TaskConfig struct {
-	MaxCrawlCount           int    // 最大爬取的数量
+	MaxCrawlCount           int    // 최대 크롤링 횟수
 	FilterMode              string // simple、smart、strict
 	ExtraHeaders            map[string]interface{}
 	ExtraHeadersString      string
-	AllDomainReturn         bool // 全部域名收集
-	SubDomainReturn         bool // 子域名收集
-	NoHeadless              bool // headless模式
+	AllDomainReturn         bool // 전체 도메인 수집
+	SubDomainReturn         bool // 하위 도메인 수집
+	NoHeadless              bool // headless 모드
 	DomContentLoadedTimeout time.Duration
-	TabRunTimeout           time.Duration     // 单个标签页超时
-	PathByFuzz              bool              // 通过字典进行Path Fuzz
-	FuzzDictPath            string            //Fuzz目录字典
-	PathFromRobots          bool              // 解析Robots文件找出路径
-	MaxTabsCount            int               // 允许开启的最大标签页数量 即同时爬取的数量
-	ChromiumPath            string            // Chromium的程序路径  `/home/zhusiyu1/chrome-linux/chrome`
-	ChromiumWSUrl           string            // Websocket debugging URL for a running chrome session
-	EventTriggerMode        string            // 事件触发的调用方式： 异步 或 顺序
-	EventTriggerInterval    time.Duration     // 事件触发的间隔
-	BeforeExitDelay         time.Duration     // 退出前的等待时间，等待DOM渲染，等待XHR发出捕获
-	EncodeURLWithCharset    bool              // 使用检测到的字符集自动编码URL
-	IgnoreKeywords          []string          // 忽略的关键字，匹配上之后将不再扫描且不发送请求
-	Proxy                   string            // 请求代理
-	CustomFormValues        map[string]string // 自定义表单填充参数
-	CustomFormKeywordValues map[string]string // 自定义表单关键词填充内容
-	MaxRunTime              int64             // 最大爬取时间(单位秒），超时则结束任务，平滑结束（比如某个url还未处理完不能结束，需要一次req完成后才可以结束整个任务）
+	TabRunTimeout           time.Duration     // 단일 탭 크롤링 제한 시간
+	PathByFuzz              bool              // dictionary를 사용하여 경로를 찾을지 여부
+	FuzzDictPath            string            // dictionary 경로
+	PathFromRobots          bool              // robots.txt를 사용하여 경로를 찾을지 여부
+	MaxTabsCount            int               // 열 수 있는 최대 탭 수, 즉 동시 크롤링 횟수
+	ChromiumPath            string            // Chromium 경로
+	ChromiumWSUrl           string            // 실행 중인 크롬 세션에 대한 WebSocket 디버깅 URL
+	EventTriggerMode        string            // 이벤트 트리거 방식 : 비동기 / 동기
+	EventTriggerInterval    time.Duration     // 이벤트 트리거 간격
+	BeforeExitDelay         time.Duration     // 종료 전 대기시간, DOM 랜더링 대기, XHR에서 캡처 발행 대기
+	EncodeURLWithCharset    bool              // 감지된 문자 집합을 사용하여 URL 자동 인코딩
+	IgnoreKeywords          []string          // 무시된 키워드는 더 이상 검색되지 않으며, 검색이 완료된 후에도 요청이 전송되지 않음
+	Proxy                   string            // 에이전트 요청
+	CustomFormValues        map[string]string // 사용자 지정 양식 매개 변수
+	CustomFormKeywordValues map[string]string // 사용자 지정 양식 keyword 매개 변수
+	MaxRunTime              int64             // 최대 크롤링 시간(초), 시간 초과로 작업 종료, 원활한 종료(예시: 아직 처리되지 않은 URL은 종료할 수 없으며, 전체 작업을 종료하려면 완료해야 하는 요청이 있어야 함)
 }
 
 type TaskConfigOptFunc func(*TaskConfig)

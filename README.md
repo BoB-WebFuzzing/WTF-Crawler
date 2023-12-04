@@ -12,6 +12,20 @@ sudo apt install golang -y
 go version # check go version
 ```
 
+#### Go 버전 업그레이드
+go version이 1.21.x 미만일 때 업그레이드 진행
+아래 예시는 1.21.4 버전으로 업그레이드 하는 명령어임
+다른 버전 : https://go.dev/dl/
+
+```shell
+sudo rm -rf /usr/local/go # 기존 golang 제거
+wget https://go.dev/dl/go1.21.4.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.21.4.linux-amd64.tar.gz
+export PATH=$PATH:/usr/local/go/bin
+source ~/.profile
+go version
+```
+
 ### 1. Git Clone
 ```shell
 git clone https://github.com/BoB-WebFuzzing/WTF-crawlergo.git

@@ -13,9 +13,9 @@ go version # check go version
 ```
 
 #### Go 버전 업그레이드
-go version이 1.21.x 미만일 때 업그레이드 진행
-아래 예시는 1.21.4 버전으로 업그레이드 하는 명령어임
-다른 버전 : https://go.dev/dl/
+- go version이 1.21.x 미만일 때 버전 업그레이드가 필요하다
+- 아래 예시는 1.21.4 버전으로 업그레이드 하는 명령어임
+- 다른 버전 : https://go.dev/dl/
 
 ```shell
 sudo rm -rf /usr/local/go # 기존 golang 제거

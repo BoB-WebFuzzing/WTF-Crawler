@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Qianlitp/crawlergo/pkg/gremlins"
 	"log"
+	"net/url"
 	"os"
 	"os/signal"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
-	"net/url"
 
 	"github.com/Qianlitp/crawlergo/pkg"
 	"github.com/Qianlitp/crawlergo/pkg/config"
@@ -175,7 +176,7 @@ func run(c *cli.Context) error {
 	}
 
 	go handleExit(task)
-	logger.Logger.Info("Start crawling.")
+	logger.Logger.Info("Start crawling.") // 크롤링 시작
 	task.Run()
 	result := task.Result
 
@@ -188,9 +189,18 @@ func run(c *cli.Context) error {
 		Push2Proxy(result.ReqList)
 	}
 
-	// 输出结果
-	outputResult(result)
+	/****************************3********************************************/
+	logger.Logger.Info("[TEST CODE] Start Gremlins Test")
+	gremlinTask, err := gremlins.GremlinTestCode(taskConfig, result.ReqList)
+	if err != nil {
+		logger.Logger.Error("create gremlin task failed.")
+		os.Exit(-1)
+	}
+	_, _ = gremlinTask.Run()
+	result.ReqList = gremlinTask.Result
+	/************************************************************************/
 
+	outputResult(result)
 	return nil
 }
 
@@ -302,58 +312,58 @@ func handleExit(t *pkg.CrawlerTask) {
 }
 
 func getJsonSerialize(result *pkg.Result) []byte {
-    requestsFound := make(map[string]Request)
-    inputSet := make([]string, 0)
+	requestsFound := make(map[string]Request)
+	inputSet := make([]string, 0)
 
-    for _, _req := range result.ReqList {
-        var req Request
-        var key string
-        req.Method = _req.Method
-        req.Url = _req.URL.String()
-        req.Source = _req.Source
-        req.Data = _req.PostData
-        req.Headers = _req.Headers
+	for _, _req := range result.ReqList {
+		var req Request
+		var key string
+		req.Method = _req.Method
+		req.Url = _req.URL.String()
+		req.Source = _req.Source
+		req.Data = _req.PostData
+		req.Headers = _req.Headers
 
-        // URL에서 쿼리 파싱
-        parsedURL, _ := url.Parse(req.Url)
-        queryMap, _ := url.ParseQuery(parsedURL.RawQuery)
-        for k, v := range queryMap {
-            inputSet = append(inputSet, fmt.Sprintf("%s=%s", k, v[0]))
-        }
+		// URL에서 쿼리 파싱
+		parsedURL, _ := url.Parse(req.Url)
+		queryMap, _ := url.ParseQuery(parsedURL.RawQuery)
+		for k, v := range queryMap {
+			inputSet = append(inputSet, fmt.Sprintf("%s=%s", k, v[0]))
+		}
 
-        // postData 파싱
-        if req.Data != "" {
-            dataPairs := strings.Split(req.Data, "&")
-            for _, pair := range dataPairs {
-                inputSet = append(inputSet, pair)
-            }
-        }
+		// postData 파싱
+		if req.Data != "" {
+			dataPairs := strings.Split(req.Data, "&")
+			for _, pair := range dataPairs {
+				inputSet = append(inputSet, pair)
+			}
+		}
 
-        if req.Data == "" {
-            key = fmt.Sprintf("%s %s", req.Method, req.Url)
-        } else {
-            key = fmt.Sprintf("%s %s %s", req.Method, req.Url, req.Data)
-        }
-        requestsFound[key] = req
-    }
+		if req.Data == "" {
+			key = fmt.Sprintf("%s %s", req.Method, req.Url)
+		} else {
+			key = fmt.Sprintf("%s %s %s", req.Method, req.Url, req.Data)
+		}
+		requestsFound[key] = req
+	}
 
-    resultJSON := Result{
-        RequestsFound: requestsFound,
-        InputSet:      inputSet,
-    }
+	resultJSON := Result{
+		RequestsFound: requestsFound,
+		InputSet:      inputSet,
+	}
 
-    resBytes, err := json.MarshalIndent(resultJSON, "", "    ")
-    if err != nil {
-        log.Fatal("Marshal result error")
-    }
+	resBytes, err := json.MarshalIndent(resultJSON, "", "    ")
+	if err != nil {
+		log.Fatal("Marshal result error")
+	}
 
-    replacer := strings.NewReplacer(
-        "\\u0026", "&",
-        "\\u003c", "<",
-        "\\u003e", ">",
+	replacer := strings.NewReplacer(
+		"\\u0026", "&",
+		"\\u003c", "<",
+		"\\u003e", ">",
 		"\\\\", "\"",
-    )
-    resultString := replacer.Replace(string(resBytes))
+	)
+	resultString := replacer.Replace(string(resBytes))
 
-    return []byte(resultString)
+	return []byte(resultString)
 }

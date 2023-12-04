@@ -16,7 +16,6 @@ import (
 )
 
 type CrawlerTask struct {
-
 	Browser       *engine2.Browser     //
 	RootDomain    string               // 当前爬取根域名 用于子域名收集
 	Targets       []*model.Request     // 输入目标
@@ -27,7 +26,7 @@ type CrawlerTask struct {
 	taskWG        sync.WaitGroup       // 等待协程池所有任务结束
 	crawledCount  int                  // 爬取过的数量
 	taskCountLock sync.Mutex           // 已爬取的任务总数锁
-  Start         time.Time           //开始时间
+	Start         time.Time            //开始时间
 
 }
 

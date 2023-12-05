@@ -6,18 +6,16 @@ import (
 	"github.com/Qianlitp/crawlergo/pkg/config"
 	"github.com/Qianlitp/crawlergo/pkg/engine"
 	"github.com/Qianlitp/crawlergo/pkg/filter"
+	"github.com/Qianlitp/crawlergo/pkg/logger"
 	"github.com/Qianlitp/crawlergo/pkg/model"
 	"github.com/chromedp/cdproto/browser"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/fetch"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/runtime"
+	"github.com/chromedp/chromedp"
 	"log"
 	"strings"
-	"time"
-
-	"github.com/Qianlitp/crawlergo/pkg/logger"
-	"github.com/chromedp/chromedp"
 )
 
 type Browser struct {
@@ -56,7 +54,7 @@ func InitBrowser(chromiumPath string, extraHeaders map[string]interface{}, noHea
 	bctx, _ := chromedp.NewContext(allocCtx, chromedp.WithLogf(log.Printf))
 
 	if err := chromedp.Run(bctx); err != nil {
-		logger.Logger.Fatal("Chromedp 실행 오류 : ", err.Error())
+		logger.Logger.Fatal("[GremlinTest] Chromedp 실행 오류 : ", err.Error())
 	}
 	bro.Ctx = bctx
 	bro.Cancel = cancel
@@ -65,7 +63,7 @@ func InitBrowser(chromiumPath string, extraHeaders map[string]interface{}, noHea
 }
 
 func (bro *Browser) Close() {
-	logger.Logger.Info("Browser를 종료합니다.")
+	logger.Logger.Info("[GremlinTest] Browser를 종료합니다.")
 	if err := browser.Close().Do(bro.Ctx); err != nil {
 		logger.Logger.Debug(err)
 	}
@@ -103,14 +101,16 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 	var collectedURL int
 
 	addGremlinScript := `
-		(function (d, script) {
-                    script = d.createElement('script');
-                    script.type = 'text/javascript';
-                    script.async = true;
-                    script.src = 'https://unpkg.com/gremlins.js';
-                    d.getElementsByTagName('head')[0].appendChild(script);
-                }(document))
-		console.log("GremlinScriptAdded")
+		script = document.createElement('script');
+		script.type = 'text/javascript';
+		script.async = true;
+		script.src = 'https://unpkg.com/gremlins.js';
+		document.getElementsByTagName('head')[0].appendChild(script);
+	
+		var signal = document.createElement('div');
+		signal.id = 'gremlin-script-added';
+		document.body.appendChild(signal);
+		console.log("[WTFuzz] Gremlin Script Added")
 		`
 
 	addFormScript := `
@@ -308,6 +308,12 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
         }
 
 		let randomizer = new gremlins.Chance();
+
+		var signal = document.createElement('div');
+		signal.id = 'gremlin-form-script-added';
+		document.body.appendChild(signal);
+
+		console.log("[WTFuzz] Gremlin Form Script Added")
 		`
 
 	gremlinSettings := `
@@ -332,12 +338,18 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 			distribution: [0.80, 0.15, 0.05],
 			delay: 20,
 		});
+
+		var signal = document.createElement('div');
+		signal.id = 'gremlin-setting-script-added';
+		document.body.appendChild(signal);
+
+		console.log("[WTFuzz] Gremlin Setting Script Added")
 		`
 
 	coolHorde := `
 		async function runGremlin() {
-			for (let i = 0; i < 5; i++) {
-				console.log("Gremlin TEST START : " + (i+1));
+			for (let i = 0; i < 2; i++) {
+				console.log("Gremlin TEST START : " + (i+1)/5);
 	
 				console.log("Gremlin TESTING : formFiller()");
 				await gremlins.createHorde({
@@ -363,7 +375,7 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 					randomizer: noChance
 				}).unleash();
 			}
-			console.log("Gremlin TEST Complete");
+			console.log("[WTFuzz] Gremlin TEST Complete");
 			var signal = document.createElement('div');
 			signal.id = 'gremlin-complete';
 			document.body.appendChild(signal);
@@ -402,21 +414,55 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 				switch ev := ev.(type) {
 				case *runtime.EventConsoleAPICalled:
 					for _, arg := range ev.Args {
-						logger.Logger.Info("[console] " + string([]byte(arg.Value)))
-						if strings.Contains(string([]byte(arg.Value)), "GremlinScriptAdded") {
+						if strings.Contains(string([]byte(arg.Value)), "WTFuzz") {
+							logger.Logger.Info("[console] " + string([]byte(arg.Value)))
+						}
+						if strings.Contains(string([]byte(arg.Value)), "Gremlin Script Added") {
 							initPageLoading = false
 						}
+					}
+				case *network.EventResponseReceived:
+					c := chromedp.FromContext(ctx)
+					ctx := cdp.WithExecutor(ctx, c.Target)
+					res, err := network.GetResponseBody(ev.RequestID).Do(ctx)
+					if err != nil {
+						logger.Logger.Debug("[GremlinTest] Response Parsing ERROR : ", err)
+						return
+					}
+					resStr := string(res)
+
+					if ev.Response.Status >= 400 {
+						logger.Logger.Info("[GremlinTest] Response Status : ", ev.Response.Status, ", Skipped ", ev.Response.URL)
+						cancel()
+						return
+					}
+					switch ev.Response.Headers["Content-Type"] {
+					case "application/javascript", "application/json", "text/javascript", "text/json":
+						logger.Logger.Info("[GremlinTest] Response Status : ", ev.Response.Status, ", Skipped ", ev.Response.URL)
+						cancel()
+						return
+					}
+
+					if len(resStr) < 20 {
+						logger.Logger.Info("[GremlinTest] Response Text is Too Short. Skipped ", ev.Response.URL)
+						cancel()
+						return
+					}
+
+					if !strings.Contains(resStr, "<body") || !strings.Contains(resStr, "<form") || !strings.Contains(resStr, "<frameset") {
+						logger.Logger.Info("[GremlinTest] Response Text is not HTML. Skipped ", ev.Response.URL)
+						cancel()
+						return
 					}
 				case *fetch.EventRequestPaused:
 					go func() {
 						c := chromedp.FromContext(ctx)
 						ctx := cdp.WithExecutor(ctx, c.Target)
-
-						logger.Logger.Debug("Intercepted Request : ", ev.Request.URL)
+						logger.Logger.Debug("[GremlinTest] Intercepted Request : ", ev.Request.URL)
 
 						requestURL, err := model.GetUrl(ev.Request.URL)
 						if err != nil {
-							logger.Logger.Error("URL Parse Error : ", err)
+							logger.Logger.Error("[GremlinTest] URL Parse Error : ", err)
 							return
 						}
 
@@ -443,6 +489,11 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 							return
 						}
 
+						if ev.Request.Method == "POST" {
+							_ = fetch.ContinueRequest(ev.RequestID).Do(ctx)
+							return
+						}
+
 						if ev.Request.URL == targetURL {
 							if initPageLoading {
 								_ = fetch.ContinueRequest(ev.RequestID).Do(ctx)
@@ -453,7 +504,7 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 						} else {
 							tempURL, err := model.GetUrl(targetURL)
 							if err != nil {
-								logger.Logger.Error("URL Parse Error : ", err)
+								logger.Logger.Error("[GremlinTest] URL Parse Error : ", err)
 								return
 							}
 							tempURL.Scheme = "https"
@@ -479,33 +530,34 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 
 			if err := chromedp.Run(ctx,
 				fetch.Enable(),
+				network.SetExtraHTTPHeaders(gt.Browser.ExtraHeaders),
 				chromedp.Navigate(targetURL),
 				chromedp.WaitVisible(`body`, chromedp.ByQuery),
 				chromedp.Evaluate(addGremlinScript, nil),
-				chromedp.Sleep(2*time.Second),
+				chromedp.WaitVisible(`#gremlin-script-added`, chromedp.ByQuery),
 				chromedp.Evaluate(addFormScript, nil),
-				chromedp.Sleep(2*time.Second),
+				chromedp.WaitVisible(`#gremlin-form-script-added`, chromedp.ByQuery),
 				chromedp.Evaluate(gremlinSettings, nil),
-				chromedp.Sleep(2*time.Second),
+				chromedp.WaitVisible(`#gremlin-setting-script-added`, chromedp.ByQuery),
 				chromedp.Evaluate(coolHorde, nil),
 				chromedp.WaitVisible(`#gremlin-complete`, chromedp.ByQuery),
 			); err != nil {
-				logger.Logger.Error("Gremlin Test Error : ", err)
-				return nil, nil
+				logger.Logger.Error("[GremlinTest] Error : ", err)
+				continue
 			}
 
 			req.GremlinTesting = true
 
 			for _, req := range beforeSmartFilteringURL {
 				if gt.filter.DoFilter(req) {
-					logger.Logger.Debugf("[!] filter req: " + req.URL.RequestURI())
+					logger.Logger.Debugf("[GremlinTest] filter req: " + req.URL.RequestURI())
 					continue
 				}
 				if req.Method != "GET" {
 					req.GremlinTesting = true
 				}
 				tempGremlinURL = append(tempGremlinURL, req)
-				logger.Logger.Info("Collected NEW URL : " + req.Method + " " + req.URL.String() + " " + req.PostData)
+				logger.Logger.Info("[GremlinTest] Collected NEW URL : " + req.Method + " " + req.URL.String() + " " + req.PostData)
 				collectedURL += 1
 			}
 		}
@@ -513,6 +565,6 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 			gt.Result = append(gt.Result, req)
 		}
 	}
-	logger.Logger.Info("Gremlin Test End")
+	logger.Logger.Info("[GremlinTest] Test Complete")
 	return gt.Result, nil
 }

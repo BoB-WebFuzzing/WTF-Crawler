@@ -94,6 +94,7 @@ var (
 )
 
 var DefaultIgnoreKeywords = []string{"logout", "quit", "exit"}
+var IgnoreQueryKey = []string{"route"}
 var AllowedFormName = []string{"default", "mail", "code", "phone", "username", "password", "qq", "id_card", "url", "date", "number"}
 
 type ContinueResourceList []string

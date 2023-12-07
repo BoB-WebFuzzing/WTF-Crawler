@@ -30,7 +30,7 @@ type SmartFilter struct {
 
 const (
 	MaxParentPathCount         = 32 // 相对于上一级目录，本级path目录的数量修正最大值
-	MaxParamKeySingleCount     = 8  // 某个URL参数名重复修正最大值
+	MaxParamKeySingleCount     = 8  // URL 쿼리의 Key 반복 횟수
 	MaxParamKeyAllCount        = 10 // 本轮所有URL中某个参数名的重复修正最大值
 	MaxPathParamEmptyCount     = 10 // 某个path下的参数值为空，参数名个数修正最大值
 	MaxPathParamKeySymbolCount = 5  // 某个Path下的某个参数的标记数量超过此值，则该参数被全局标记
@@ -278,8 +278,15 @@ func (s *SmartFilter) markParamValue(paramMap map[string]interface{}, req model.
 		// 只处理string类型
 		valueStr, ok := value.(string)
 		if !ok {
+			markedParamMap[key] = value
 			continue
 		}
+
+		if tools.StringSliceContain(config.IgnoreQueryKey, key) {
+			markedParamMap[key] = value
+			continue
+		}
+
 		// Crawlergo 为特定字符，说明此参数位置为数值型，非逻辑型，记录下此参数，全局过滤
 		if strings.Contains(valueStr, "Crawlergo") {
 			name := req.URL.Hostname() + req.URL.Path + req.Method + key
@@ -501,8 +508,8 @@ func (s *SmartFilter) repeatCountStatistic(req *model.Request) {
 对重复统计之后，超过阈值的部分再次打标记
 */
 func (s *SmartFilter) overCountMark(req *model.Request) {
-	queryKeyId := req.Filter.QueryKeysId
-	pathId := req.Filter.PathId
+	queryKeyId := req.Filter.QueryKeysId // MD5(쿼리key)
+	pathId := req.Filter.PathId          // MD5(Path)
 	// 参数不为空，
 	if req.Filter.QueryKeysId != "" {
 		// 某个URL的所有参数名重复数量超过阈值 且该参数有超过三个不同的值 则打标记
@@ -512,7 +519,9 @@ func (s *SmartFilter) overCountMark(req *model.Request) {
 				if set, ok := s.filterParamKeySingleValues.Load(paramQueryKey); ok {
 					set := set.(mapset.Set)
 					if set.Cardinality() > 3 {
-						req.Filter.MarkedQueryMap[key] = FixParamRepeatMark
+						if !tools.StringSliceContain(config.IgnoreQueryKey, key) {
+							req.Filter.MarkedQueryMap[key] = FixParamRepeatMark
+						}
 					}
 				}
 			}
@@ -523,7 +532,9 @@ func (s *SmartFilter) overCountMark(req *model.Request) {
 			if paramKeySet, ok := s.filterParamKeyAllValues.Load(key); ok {
 				paramKeySet := paramKeySet.(mapset.Set)
 				if paramKeySet.Cardinality() > MaxParamKeyAllCount {
-					req.Filter.MarkedQueryMap[key] = FixParamRepeatMark
+					if !tools.StringSliceContain(config.IgnoreQueryKey, key) {
+						req.Filter.MarkedQueryMap[key] = FixParamRepeatMark
+					}
 				}
 			}
 

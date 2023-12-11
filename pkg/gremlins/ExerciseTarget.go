@@ -351,7 +351,7 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 	coolHorde := `
 		async function runGremlin() {
 			for (let i = 0; i < 2; i++) {
-				console.log("Gremlin TEST START : " + (i+1)/2);
+				console.log("[WTFuzz] Gremlin TEST START : " + (i+1) + "of 2"");"
 	
 				console.log("Gremlin TESTING : formFiller()");
 				await gremlins.createHorde({

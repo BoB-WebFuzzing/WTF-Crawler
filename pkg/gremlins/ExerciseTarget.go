@@ -351,7 +351,7 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 	coolHorde := `
 		async function runGremlin() {
 			for (let i = 0; i < 2; i++) {
-				console.log("[WTFuzz] Gremlin TEST START : " + (i+1) + "of 2");
+				console.log("[WTFuzz] Gremlin TEST START : " + (i+1) + " of 2");
 	
 				console.log("Gremlin TESTING : formFiller()");
 				await gremlins.createHorde({
@@ -410,7 +410,6 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 			logger.Logger.Info("Gremlin Test URL ("+idx+"/"+total+") : ", targetURL)
 
 			ctx, cancel := chromedp.NewContext(gt.Browser.Ctx)
-			defer cancel()
 
 			initPageLoading := true
 
@@ -462,7 +461,6 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 					go func() {
 						c := chromedp.FromContext(ctx)
 						ctx := cdp.WithExecutor(ctx, c.Target)
-						logger.Logger.Debug("[GremlinTest] Intercepted Request : ", ev.Request.URL)
 
 						requestURL, err := model.GetUrl(ev.Request.URL)
 						if err != nil {
@@ -504,7 +502,6 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 							} else {
 								_ = fetch.FailRequest(ev.RequestID, network.ErrorReasonAborted).Do(ctx)
 							}
-							return
 						} else {
 							tempURL, err := model.GetUrl(targetURL)
 							if err != nil {
@@ -522,10 +519,8 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 							}
 							if strings.Contains(requestURL.String(), "gremlins") {
 								_ = fetch.ContinueRequest(ev.RequestID).Do(ctx)
-								return
 							} else {
 								_ = fetch.FailRequest(ev.RequestID, network.ErrorReasonAborted).Do(ctx)
-								return
 							}
 						}
 					}()
@@ -536,6 +531,11 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 				network.SetExtraHTTPHeaders(gt.Browser.ExtraHeaders),
 				chromedp.Navigate(targetURL),
 				chromedp.Sleep(3*time.Second),
+				chromedp.Evaluate(`
+				Array.from(document.querySelectorAll('a[target]')).forEach(link => {
+					link.removeAttribute('target');
+				});
+			`, nil),
 				fetch.Enable(),
 				chromedp.WaitVisible(`body`, chromedp.ByQuery),
 				chromedp.Evaluate(addGremlinScript, nil),
@@ -554,6 +554,8 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 				logger.Logger.Error("[GremlinTest] Error : ", err)
 				continue
 			}
+
+			cancel()
 
 			req.GremlinTesting = true
 

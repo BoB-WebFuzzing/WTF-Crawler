@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/Qianlitp/crawlergo/pkg/gremlins"
 	"log"
 	"net/url"
 	"os"
@@ -189,14 +190,14 @@ func run(c *cli.Context) error {
 	}
 
 	/************************************************************************/
-	//logger.Logger.Info("[TEST CODE] Start Gremlins Test")
-	//gremlinTask, err := gremlins.GremlinTestCode(taskConfig, result.ReqList)
-	//if err != nil {
-	//	logger.Logger.Error("create gremlin task failed.")
-	//	os.Exit(-1)
-	//}
-	//_, _ = gremlinTask.Run()
-	//result.ReqList = gremlinTask.Result
+	logger.Logger.Info("[TEST CODE] Start Gremlins Test")
+	gremlinTask, err := gremlins.GremlinTestCode(taskConfig, result.ReqList)
+	if err != nil {
+		logger.Logger.Error("create gremlin task failed.")
+		os.Exit(-1)
+	}
+	_, _ = gremlinTask.Run()
+	result.ReqList = gremlinTask.Result
 	/************************************************************************/
 
 	outputResult(result)

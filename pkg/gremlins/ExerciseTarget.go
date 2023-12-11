@@ -15,20 +15,22 @@ import (
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 	"log"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type Browser struct {
-	Ctx          context.Context
+	Ctx          context.Context // Browser Context
 	Cancel       context.CancelFunc
-	ExtraHeaders map[string]interface{}
+	ExtraHeaders map[string]interface{} // 커스텀 헤더
 }
 
 type GremlinTest struct {
-	Browser *Browser
-	Result  []*model.Request // Crawlergo에서 수집한 URL
-	filter  filter.FilterHandler
-	Config  *pkg.TaskConfig
+	Browser *Browser             // Browser 객체
+	Result  []*model.Request     // Crawlergo에서 수집한 URL
+	filter  filter.FilterHandler // URL 필터링 객체
+	Config  *pkg.TaskConfig      // Crawlergo 설정 정보
 }
 
 func InitBrowser(chromiumPath string, extraHeaders map[string]interface{}, noHeadless bool) *Browser {
@@ -158,7 +160,7 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
             let rnd =  Math.random();
             let value = "2";
             if (rnd > 0.7){
-                value = "Witcher";
+                value = "WTFCrawler";
             } else if (rnd > 0.3) {
                 value =  "127.0.0.1";
             }
@@ -247,7 +249,7 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
                     if (monthfirst){
                         sep = monthfirst[1];
                     } else {
-                        console.log("[WC] this should never occur, couldn't find the separator, defaulting to -")
+                        console.log("ERROR")
                     }
                 }
 
@@ -324,7 +326,7 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 				} else {
 					let rnd =  Math.random()
 					if (rnd > 0.7){
-						return "WTFCrawlergo";
+						return "WTFCrawler";
 					} else if (rnd > 0.3){
 						return "127.0.0.1";
 					} else {
@@ -349,7 +351,7 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 	coolHorde := `
 		async function runGremlin() {
 			for (let i = 0; i < 2; i++) {
-				console.log("Gremlin TEST START : " + (i+1)/5);
+				console.log("Gremlin TEST START : " + (i+1)/2);
 	
 				console.log("Gremlin TESTING : formFiller()");
 				await gremlins.createHorde({
@@ -394,7 +396,9 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 		if collectedURL == 0 {
 			break
 		}
-		for _, req := range gt.Result {
+		for i, req := range gt.Result {
+			idx := strconv.Itoa(i + 1)
+			total := strconv.Itoa(len(gt.Result))
 			if req.GremlinTesting {
 				continue
 			}
@@ -403,7 +407,7 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 			}
 			collectedURL = 0
 			targetURL := req.URL.String()
-			logger.Logger.Info("Gremlin Test URL : ", targetURL)
+			logger.Logger.Info("Gremlin Test URL ("+idx+"/"+total+") : ", targetURL)
 
 			ctx, cancel := chromedp.NewContext(gt.Browser.Ctx)
 			defer cancel()
@@ -421,39 +425,39 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 							initPageLoading = false
 						}
 					}
-				case *network.EventResponseReceived:
-					c := chromedp.FromContext(ctx)
-					ctx := cdp.WithExecutor(ctx, c.Target)
-					res, err := network.GetResponseBody(ev.RequestID).Do(ctx)
-					if err != nil {
-						logger.Logger.Debug("[GremlinTest] Response Parsing ERROR : ", err)
-						return
-					}
-					resStr := string(res)
-
-					if ev.Response.Status >= 400 {
-						logger.Logger.Info("[GremlinTest] Response Status : ", ev.Response.Status, ", Skipped ", ev.Response.URL)
-						cancel()
-						return
-					}
-					switch ev.Response.Headers["Content-Type"] {
-					case "application/javascript", "application/json", "text/javascript", "text/json":
-						logger.Logger.Info("[GremlinTest] Response Status : ", ev.Response.Status, ", Skipped ", ev.Response.URL)
-						cancel()
-						return
-					}
-
-					if len(resStr) < 20 {
-						logger.Logger.Info("[GremlinTest] Response Text is Too Short. Skipped ", ev.Response.URL)
-						cancel()
-						return
-					}
-
-					if !strings.Contains(resStr, "<body") || !strings.Contains(resStr, "<form") || !strings.Contains(resStr, "<frameset") {
-						logger.Logger.Info("[GremlinTest] Response Text is not HTML. Skipped ", ev.Response.URL)
-						cancel()
-						return
-					}
+				//case *network.EventResponseReceived:
+				//	c := chromedp.FromContext(ctx)
+				//	ctx := cdp.WithExecutor(ctx, c.Target)
+				//	res, err := network.GetResponseBody(ev.RequestID).Do(ctx)
+				//	if err != nil {
+				//		logger.Logger.Debug("[GremlinTest] Response Parsing ERROR : ", err)
+				//		return
+				//	}
+				//	resStr := string(res)
+				//
+				//	if ev.Response.Status >= 400 {
+				//		logger.Logger.Info("[GremlinTest] Response Status : ", ev.Response.Status, ", Skipped ", ev.Response.URL)
+				//		cancel()
+				//		return
+				//	}
+				//	switch ev.Response.Headers["Content-Type"] {
+				//	case "application/javascript", "application/json", "text/javascript", "text/json":
+				//		logger.Logger.Info("[GremlinTest] Response Status : ", ev.Response.Status, ", Skipped ", ev.Response.URL)
+				//		cancel()
+				//		return
+				//	}
+				//
+				//	if len(resStr) < 20 {
+				//		logger.Logger.Info("[GremlinTest] Response Text is Too Short. Skipped ", ev.Response.URL)
+				//		cancel()
+				//		return
+				//	}
+				//
+				//	if !strings.Contains(resStr, "<body") || !strings.Contains(resStr, "<form") || !strings.Contains(resStr, "<frameset") {
+				//		logger.Logger.Info("[GremlinTest] Response Text is not HTML. Skipped ", ev.Response.URL)
+				//		cancel()
+				//		return
+				//	}
 				case *fetch.EventRequestPaused:
 					go func() {
 						c := chromedp.FromContext(ctx)
@@ -529,18 +533,23 @@ func (gt *GremlinTest) Run() ([]*model.Request, error) {
 			})
 
 			if err := chromedp.Run(ctx,
-				fetch.Enable(),
 				network.SetExtraHTTPHeaders(gt.Browser.ExtraHeaders),
 				chromedp.Navigate(targetURL),
+				chromedp.Sleep(3*time.Second),
+				fetch.Enable(),
 				chromedp.WaitVisible(`body`, chromedp.ByQuery),
 				chromedp.Evaluate(addGremlinScript, nil),
+				chromedp.Sleep(1*time.Second),
 				chromedp.WaitVisible(`#gremlin-script-added`, chromedp.ByQuery),
 				chromedp.Evaluate(addFormScript, nil),
+				chromedp.Sleep(1*time.Second),
 				chromedp.WaitVisible(`#gremlin-form-script-added`, chromedp.ByQuery),
 				chromedp.Evaluate(gremlinSettings, nil),
+				chromedp.Sleep(1*time.Second),
 				chromedp.WaitVisible(`#gremlin-setting-script-added`, chromedp.ByQuery),
 				chromedp.Evaluate(coolHorde, nil),
 				chromedp.WaitVisible(`#gremlin-complete`, chromedp.ByQuery),
+				fetch.Disable(),
 			); err != nil {
 				logger.Logger.Error("[GremlinTest] Error : ", err)
 				continue

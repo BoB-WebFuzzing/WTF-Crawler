@@ -93,7 +93,7 @@ var (
 	ScriptSuffixSet mapset.Set
 )
 
-var DefaultIgnoreKeywords = []string{"logout", "quit", "exit"}
+var DefaultIgnoreKeywords = []string{"logout", "quit", "exit", "Sign out", "signout"}
 var IgnoreQueryKey = []string{"route"}
 var AllowedFormName = []string{"default", "mail", "code", "phone", "username", "password", "qq", "id_card", "url", "date", "number"}
 
